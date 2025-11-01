@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth-service-postgres
+    username: postgres
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # hoặc: none | validate | create | create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # (Tùy chọn) Logging SQL rõ hơn trong console
+  logging:
+    level:
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+jwt:
+  signerKey: "YWEtc3RyaW5nLXNlY3JldC1hdC1sZWFzdC0yNTYtYml0cy1sb25n"
+  valid-duration: 3600 # in second
+  refreshable-duration: 36000 # in seconds
+# (Tùy chọn) Cấu hình server
+server:
+  port: 8081
