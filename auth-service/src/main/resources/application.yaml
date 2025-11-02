@@ -5,6 +5,8 @@ spring:
     password: admin123
     driver-class-name: org.postgresql.Driver
 
+
+
   jpa:
     hibernate:
       ddl-auto: update   # hoặc: none | validate | create | create-drop
@@ -26,3 +28,12 @@ jwt:
 # (Tùy chọn) Cấu hình server
 server:
   port: 8081
+
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/ # Địa chỉ của Eureka Server
+  instance:
+    hostname: localhost # Tên host của instance này
+      # instance-id: ${spring.application.name}:${random.value} # Tùy chọn: tạo ID instance độc nhất
