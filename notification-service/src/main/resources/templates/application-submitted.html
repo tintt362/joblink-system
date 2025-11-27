@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:remove="all">Thông báo đơn ứng tuyển mới</title>
+</head>
+<body>
+<p>Xin chào <strong th:text="${recruiterName}">[Tên Nhà Tuyển Dụng]</strong>,</p>
+
+<p>Bạn vừa nhận được một đơn ứng tuyển mới từ ứng viên **<span th:text="${candidateName}"></span>** cho vị trí:</p>
+
+<h3><span th:text="${jobTitle}">[Tên Công Việc]</span></h3>
+
+<p>Chi tiết đơn ứng tuyển (ID: <span th:text="${applicationId}"></span>) đã được cập nhật trong hệ thống Joblink. Vui lòng đăng nhập để xem hồ sơ đầy đủ.</p>
+
+<p>
+    Trân trọng,<br>
+    Đội ngũ Joblink
+</p>
+</body>
+</html>
