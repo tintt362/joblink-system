@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: job-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/job-service-postgres
+    username: postgres
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+
+
+  elasticsearch:
+    client:
+      # Thay đổi nếu ES của bạn chạy trên host/port khác
+      nodes: localhost:9200
+  jpa:
+    hibernate:
+      ddl-auto: update     # hoặc: none | validate | create | create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        # Tùy chọn: Đảm bảo RabbitMQ không chặn luồng chính
+        auto-startup: true
+joblink:
+  rabbitmq:
+    exchange: joblink.events # Tên Exchange Topic sẽ được định nghĩa
+server:
+  port: 8083
