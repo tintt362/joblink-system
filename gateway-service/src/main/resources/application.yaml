@@ -1,0 +1,46 @@
+server:
+  port: 8080 # Cổng của API Gateway
+
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/ # Địa chỉ của Eureka Server
+  instance:
+    hostname: localhost # Tên host của instance này
+    # instance-id: ${spring.application.name}:${random.value} # Tùy chọn: tạo ID instance độc nhất
+
+spring:
+  application:
+    name:  gateway-service
+
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeaders=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+      routes:
+        # Route 1: Auth Service (Không cần filter validation)
+        - id: auth_service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        # Route 2: User Service (Cần filter validation)
+        - id: user_service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+
+  # Dịch vụ phát hiện (ví dụ: Eureka)
+  # application:
+  #   name: api-gateway
+
+# Cấu hình Key bí mật được chia sẻ từ Auth Service
+app:
+  jwt:
+    # Key bí mật DƯỚI DẠNG BASE64 (Phải trùng với signerKey trong Auth Service)
+    signer-key: "YWEtc3RyaW5nLXNlY3JldC1hdC1sZWFzdC0yNTYtYml0cy1sb25n"

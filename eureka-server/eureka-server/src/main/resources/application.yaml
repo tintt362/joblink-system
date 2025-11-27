@@ -1,0 +1,11 @@
+server:
+  port: 8761 # Cổng mặc định cho Eureka Server
+
+eureka:
+  instance:
+    hostname: localhost # Tên host của Eureka Server (đổi khi deploy lên môi trường thật)
+  client:
+    register-with-eureka: false # Không đăng ký bản thân server này với chính nó
+    fetch-registry: false       # Không lấy danh sách registry từ các server khác (vì đây là server đầu tiên)
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/ # URL để các client kết nối

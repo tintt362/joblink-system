@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: application-service
+
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  data:
+    mongodb:
+      # Địa chỉ và cổng
+      host: localhost
+      port: 27017
+
+      # Tên Database
+      database: application
+
+      # Thông tin xác thực
+      username: admin
+      password: admin123
+
+
+server:
+  port: 8084
+
+auth:
+  service:
+    url: http://localhost:8081
+
+job:
+  service:
+    url: http://localhost:8083
