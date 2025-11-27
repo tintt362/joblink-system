@@ -7,6 +7,7 @@ import com.joblink.auth_service.entity.Role;
 import com.joblink.auth_service.entity.User;
 import com.joblink.auth_service.exceptions.AppException;
 import com.joblink.auth_service.exceptions.ErrorCode;
+import com.joblink.auth_service.exceptions.ResourceNotFoundException;
 import com.joblink.auth_service.repository.InvalidatedTokenRepository;
 import com.joblink.auth_service.repository.UserRepository;
 import com.nimbusds.jose.*;
@@ -102,55 +103,8 @@ public class AuthServiceIml implements AuthService {
                 .build();
     }
 
-    // 1. Hàm tạo Access Token (Dùng cho Request)
-    public String generateAccessToken(User user) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
 
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(String.valueOf(user.getId()))
-                .issuer("tintt362.com")
-                .issueTime(new Date())
-                // Thời hạn ngắn: VALIDATION_DURATION (ví dụ: 15 phút)
-                .expirationTime(Date.from(Instant.now().plus(VALIDATION_DURATION, ChronoUnit.SECONDS)))
-                .jwtID(UUID.randomUUID().toString())
-                .claim("Role", user.getRole().toString()) // Chuyển enum sang String
-                .build();
 
-        // ... logic ký token ...
-        try {
-            byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
-            JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.toJSONObject()));
-            jwsObject.sign(new MACSigner(secretKeyBytes));
-            return jwsObject.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    // 2. Hàm tạo Refresh Token (Dùng cho Gia hạn)
-    public String generateRefreshToken(User user) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
-
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(String.valueOf(user.getId()))
-                .issuer("tintt362.com")
-                .issueTime(new Date())
-                // Thời hạn dài: REFRESHABLE_DURATION (ví dụ: 7 ngày)
-                .expirationTime(Date.from(Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)))
-                .jwtID(UUID.randomUUID().toString()) // ID duy nhất
-                // Refresh Token KHÔNG cần chứa Role (Claims tối giản)
-                .build();
-
-        // ... logic ký token (giống hệt Access Token) ...
-        try {
-            byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
-            JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.toJSONObject()));
-            jwsObject.sign(new MACSigner(secretKeyBytes));
-            return jwsObject.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @Override
     public User provisionOAuthUser(String email, String provider, Object attributes) {
@@ -158,7 +112,8 @@ public class AuthServiceIml implements AuthService {
     }
 
 
-    public String generateToken(User user) {
+    @Override
+    public String generateAccessToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
@@ -166,42 +121,47 @@ public class AuthServiceIml implements AuthService {
                 .issuer("tintt362.com")
                 .issueTime(new Date())
                 .expirationTime(Date.from(Instant.now().plus(VALIDATION_DURATION, ChronoUnit.SECONDS)))
-
                 .jwtID(UUID.randomUUID().toString())
-                .claim("Role", user.getRole())
+                .claim("Role", user.getRole().toString())
                 .build();
 
-        JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.toJSONObject()));
-
         try {
+            // Sử dụng SignedJWT thay vì JWSObject
+            SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
+
+            // Nếu signerKey là base64-encoded:
             byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
-            jwsObject.sign(new MACSigner(secretKeyBytes));
-            return jwsObject.serialize();
+            // Nếu signerKey là raw string (không base64), thay bằng:
+            // byte[] secretKeyBytes = signerKey.getBytes(StandardCharsets.UTF_8);
+
+            MACSigner signer = new MACSigner(secretKeyBytes);
+            signedJWT.sign(signer);
+
+            return signedJWT.serialize();
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
-
     }
 
 
-    // 4. Cập nhật phương thức verifyToken
-// Bỏ tham số isRefresh=true, logic kiểm tra thời hạn là mặc định của JWT
+
+    // --- verifyToken (sửa nhẹ) ---
     public SignedJWT verifyToken(String token) throws JOSEException, ParseException {
-        byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
-        JWSVerifier verifier = new MACVerifier(secretKeyBytes);
+        // parse as SignedJWT (phù hợp với generate)
         SignedJWT signedJWT = SignedJWT.parse(token);
 
-        // 1. Kiểm tra chữ ký
+        byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
+        JWSVerifier verifier = new MACVerifier(secretKeyBytes);
+
         boolean verified = signedJWT.verify(verifier);
 
-        // 2. Kiểm tra thời hạn (exp claim)
         Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-        if (!(verified && expiryTime.after(new Date()))) {
+        if (!(verified && expiryTime != null && expiryTime.after(new Date()))) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // 3. Kiểm tra thu hồi (Revocation)
+        // Kiểm tra thu hồi
         if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID())) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
@@ -240,36 +200,57 @@ public class AuthServiceIml implements AuthService {
 //                .valid(isValid)
 //                .build();
 //    }
+    public String generateRefreshToken(User user) {
+    JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
 
+    JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
+            .subject(String.valueOf(user.getId()))
+            .issuer("tintt362.com")
+            .issueTime(new Date())
+            .expirationTime(Date.from(Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)))
+            .jwtID(UUID.randomUUID().toString())
+            .build();
+
+    try {
+        SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
+        byte[] secretKeyBytes = Base64.getDecoder().decode(signerKey);
+        MACSigner signer = new MACSigner(secretKeyBytes);
+        signedJWT.sign(signer);
+        return signedJWT.serialize();
+    } catch (JOSEException e) {
+        throw new RuntimeException(e);
+    }
+}
     // 5. Cập nhật phương thức refreshToken
     @Override
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) throws ParseException, JOSEException {
-        // 1. Verify Refresh Token
-        var signJWT = verifyToken(request.getToken()); // Giờ đây nó chỉ verify dựa trên exp dài
+        // 1. Verify refresh token
+        SignedJWT signedJWT = verifyToken(request.getToken());
 
-        // 2. Thu hồi Refresh Token cũ (One-time use)
-        var jwtId = signJWT.getJWTClaimsSet().getJWTID();
-        var expiryTime = signJWT.getJWTClaimsSet().getExpirationTime();
-
-        InvalidatedToken invalidatedToken = InvalidatedToken
-                .builder().id(jwtId).expiryTime(expiryTime).build();
+        // 2. Invalidate old refresh token (one-time use)
+        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
+        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
+                .id(jwtId)
+                .expiryTime(expiryTime)
+                .build();
         invalidatedTokenRepository.save(invalidatedToken);
 
-        // 3. Issue CẶP Token mới
-        var userId = signJWT.getJWTClaimsSet().getSubject();
-        var user = userRepository.findById(Integer.valueOf(userId)).orElseThrow(
-                () -> new AppException(ErrorCode.USER_NOT_EXISTED)
-        );
+        // 3. Issue new tokens
+        String userId = signedJWT.getJWTClaimsSet().getSubject();
+        User user = userRepository.findById(Integer.valueOf(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        //String newAccessToken = generateAccessToken(user);
-        String newRefreshToken = generateRefreshToken(user); // Cấp Refresh Token MỚI
+        String newAccessToken = generateAccessToken(user);
+        String newRefreshToken = generateRefreshToken(user);
 
-        // Trả về cả hai token mới (Giả định RefreshTokenResponse chứa cả hai)
+        // 4. Trả về cả access và refresh (cập nhật DTO nếu cần)
         return RefreshTokenResponse.builder()
                 .refreshToken(newRefreshToken)
+                // giả sử RefreshTokenResponse có trường accessToken, thêm nếu cần:
+                .accessToken(newAccessToken)
                 .build();
     }
-
     // AuthServiceImpl.java
 
     @Override
@@ -282,6 +263,27 @@ public class AuthServiceIml implements AuthService {
                 .id(String.valueOf(user.getId()))
                 .email(user.getEmail())
                 .role(role) // Role đã có trong JWT
+                .build();
+    }
+
+
+    /**
+     * Lấy email của người dùng dựa trên ID.
+     * Phương thức này được gọi bởi các microservice khác (như User Service)
+     * để lấy email cho mục đích nghiệp vụ (ví dụ: gửi thông báo).
+     *
+     * @param userId ID của người dùng.
+     * @return AuthEmailResponse chứa userId và email.
+     * @throws ResourceNotFoundException nếu người dùng không tồn tại.
+     */
+    @Override
+    public AuthEmailResponse getEmailByUserId(UUID userId) {
+        User user = userRepository.findByUUID(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+
+        return AuthEmailResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
                 .build();
     }
 }

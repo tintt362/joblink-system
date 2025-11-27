@@ -8,6 +8,7 @@ import com.joblink.auth_service.entity.User;
 import com.nimbusds.jose.JOSEException;
 
 import java.text.ParseException;
+import java.util.UUID;
 
 public interface AuthService {
 
@@ -23,7 +24,7 @@ public interface AuthService {
      */
     User provisionOAuthUser(String email, String provider, Object attributes);
 
-    String generateToken(User user);
+    String generateAccessToken(User user);
     /**
      * Consume refresh token and rotate -> returns pair(accessToken, refreshToken)
      * Implementation returns map with keys: accessToken, refreshToken
@@ -33,4 +34,5 @@ public interface AuthService {
     RefreshTokenResponse refreshToken(RefreshTokenRequest request) throws ParseException, JOSEException;
 
     MeResponse getMe(String userId, String role);
+    AuthEmailResponse getEmailByUserId(UUID userId);
 }

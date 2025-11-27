@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: auth-service
   datasource:
     url: jdbc:postgresql://localhost:5432/auth-service-postgres
     username: postgres
@@ -9,7 +11,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # hoặc: none | validate | create | create-drop
+      ddl-auto: update     # hoặc: none | validate | create | create-drop
     show-sql: true
     properties:
       hibernate:

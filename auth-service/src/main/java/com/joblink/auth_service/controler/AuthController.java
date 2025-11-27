@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.text.ParseException;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -58,4 +59,19 @@ public class AuthController {
                 .result(authService.getMe(userId, role))
                 .message("Get Me Successfully").build();
     }
+
+    /**
+     * Endpoint công khai (dành cho các internal service) để lấy email của người dùng.
+     * Được gọi bởi User Service (thông qua AuthServiceProxy) để làm giàu dữ liệu.
+     * * URL: GET /api/auth/users/{userId}/email
+     *
+     * @param userId ID của người dùng.
+     * @return AuthEmailResponse chứa userId và email.
+     */
+    @GetMapping("/users/{userId}/email")
+    public ApiResponse<AuthEmailResponse> getUserEmail(@PathVariable("userId") UUID userId) {
+        return ApiResponse.<AuthEmailResponse>builder()
+                .result(authService.getEmailByUserId(userId)).build();
+    }
+
 }

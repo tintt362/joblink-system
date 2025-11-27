@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Table(name = "table_users")
 @Entity
@@ -15,13 +16,14 @@ import java.time.Instant;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @GeneratedValue
+    @Column(name = "user_id", updatable = false, nullable = false)
+    private UUID id;
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password", nullable = false, unique = true)
+    @Column(name = "password", nullable = false)
     private String password;
 
     @Column(name = "role", nullable = false, length = 20)

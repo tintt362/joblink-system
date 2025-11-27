@@ -9,5 +9,6 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class RefreshTokenResponse {
+    private String accessToken;   // thêm
     private String refreshToken;
 }
